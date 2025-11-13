@@ -8,30 +8,32 @@ import { FiPower, FiEdit, FiTrash2 } from "react-icons/fi";
 
 export default function Books() {
   const [books, setBooks] = useState([]);
+  const [page, setPage] = useState(1);
+
   const userName = localStorage.getItem("userName");
   const accessToken = localStorage.getItem("accessToken");
+
+  const authorization = {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  };
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    api
-      .get("api/Book/v1/asc/20/1", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-      .then((reponse) => {
-        setBooks(reponse.data.list);
-      });
+    fetchMoreBooks();
   }, [accessToken]);
+
+  async function fetchMoreBooks() {
+    const response = await api.get(`api/Book/v1/asc/4/${page}`, authorization);
+    setBooks([...books, ...response.data.list]);
+    setPage(page + 1);
+  }
 
   async function logout() {
     try {
-      await api.get("/api/auth/v1/revoke", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      await api.get("/api/auth/v1/revoke", authorization);
       localStorage.clear();
       navigate("/");
     } catch (error) {
@@ -39,13 +41,17 @@ export default function Books() {
     }
   }
 
+  async function editBook(id) {
+    try {
+      navigate(`/book/new/${id}`);
+    } catch (error) {
+      alert("Edit book failed! Try again!");
+    }
+  }
+
   async function deleteBook(id) {
     try {
-      await api.delete(`api/Book/v1/${id}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      await api.delete(`api/Book/v1/${id}`, authorization);
       setBooks(books.filter((book) => book.id !== id));
     } catch (error) {
       alert("Delete failed! Try again!");
@@ -59,7 +65,7 @@ export default function Books() {
         <span>
           Welcome, <strong>{userName.toUpperCase()}</strong>
         </span>
-        <Link className="button" to="/book/new">
+        <Link className="button" to="/book/new/0">
           Add New book
         </Link>
         <button onClick={logout} type="button">
@@ -88,7 +94,11 @@ export default function Books() {
             </p>
 
             <button type="button">
-              <FiEdit size={20} color="#251fc5" />
+              <FiEdit
+                onClick={() => editBook(book.id)}
+                size={20}
+                color="#251fc5"
+              />
             </button>
 
             <button onClick={() => deleteBook(book.id)} type="button">
@@ -97,6 +107,9 @@ export default function Books() {
           </li>
         ))}
       </ul>
+      <button className="button" onClick={fetchMoreBooks} type="button">
+        Load more
+      </button>
     </div>
   );
 }
